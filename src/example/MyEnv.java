@@ -8,8 +8,19 @@ import simbad.sim.Box;
 
 public class MyEnv extends EnvironmentDescription{
     public MyEnv(){
-    	//ArchÔ¤½¨¶ÔÏóÖ®Ò»£¬ÈçWall»òBox
-    	//MyRobot×Ô¼ºÌá¹©µÄ»úÆ÷ÈË¶ÔÏó£¬Ê¹ÓÃMyRobotÀàÃèÊöÄúµÄ»úÆ÷ÈË¿ØÖÆÆ÷£¬MyRobotÅÉÉú×ÔAgentÀà
+    	//Build enviroment: 4 Wall
+    	Wall w1 = new Wall(new Vector3d(10, 0, 0), 20, 1, this);
+        w1.rotate90(1);
+        add(w1);
+        Wall w2 = new Wall(new Vector3d(-10, 0, 0), 20, 1, this);
+        w2.rotate90(1);
+        add(w2);
+        Wall w3 = new Wall(new Vector3d(0, 0, 10), 20, 1, this);
+        add(w3);
+        Wall w4 = new Wall(new Vector3d(0, 0, -10), 20, 1, this);
+        add(w4);
+    	//ArchÔ¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö®Ò»ï¿½ï¿½ï¿½ï¿½Wallï¿½ï¿½Box
+    	//MyRobotï¿½Ô¼ï¿½ï¿½á¹©ï¿½Ä»ï¿½ï¿½ï¿½ï¿½Ë¶ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½MyRobotï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä»ï¿½ï¿½ï¿½ï¿½Ë¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½MyRobotï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Agentï¿½ï¿½
         add(new Arch(new Vector3d(3,0,-3),this));
 //        add(new Arch(new Vector3d(-5,0,-3),this));
 //        add(new Arch(new Vector3d(5,0,3),this));
@@ -19,6 +30,6 @@ public class MyEnv extends EnvironmentDescription{
 //        Box b2 = new Box(new Vector3d(-4,0,-4), new Vector3f(1, 3, 1),this);   
 //        add(b2);
         
-        add(new Robot(new Vector3d(0, 0, 0),"my robot"));
+        add(new Robot(new Vector3d(-8, 0, -8),"my robot"));
     }
 }
