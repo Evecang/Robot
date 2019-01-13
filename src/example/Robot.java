@@ -1,64 +1,100 @@
 package example;
 
 import simbad.sim.*;
+import javax.vecmath.Point3d;
+import javax.vecmath.Vector2d;
 import javax.vecmath.Vector3d;
+import javax.vecmath.Vector3f;
 
 public class Robot extends Agent {
-    RangeSensorBelt sonars;
-    RangeSensorBelt bumpers;
+	
+	// å…¨å±€ç›®æ ‡åæ ‡
+    Vector2d goal = new Vector2d(8,8 );
+    Vector3d goal3d = new Vector3d(8, 0,8);
+
+    private static final double repelConstant = 200.0;// æ–¥åŠ›ç³»æ•°
+    private static final double attractConstant = 30.0;// å¼•åŠ›ç³»æ•°
+    //åˆå§‹ä½ç½®
+    private Vector3d origin = null;
+    //å£°å‘ã€ä¿é™©æ‰›å’Œä¿¡å·ç¯
+    RangeSensorBelt sonars,bumpers;
+    LampActuator lamp;
 
     public Robot(Vector3d position, String name) {
         super(position, name);
-        //Ê¹ÓÃRobotFactoryÀàÀ´»ñÈ¡RangeSensorBelt¶ÔÏó -> ÉùÄÉ
+        //Ê¹ï¿½ï¿½RobotFactoryï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡RangeSensorBeltï¿½ï¿½ï¿½ï¿½ -> ï¿½ï¿½ï¿½ï¿½ è¿™è´§æ˜¯ä¹±ç ï¼Œé‚£æˆ‘æ˜¯ä»€ä¹ˆ
         sonars = RobotFactory.addSonarBeltSensor(this,8);
         bumpers = RobotFactory.addBumperBeltSensor(this,8);
+        lamp = RobotFactory.addLamp(this);
+        origin = position;// èµ·ç‚¹ä½ç½®
+    }
+    
+    //çº¿é€Ÿåº¦
+    public Vector3d getVelocity()
+    {
+        return this.linearVelocity;
+    }
+    
+  //è®¡ç®—æ–¥åŠ›
+    private double repelForce(double distance, double range) 
+    {
+        double force = 0;
+        Point3d p = new Point3d();
+        getCoords(p); //è·å–å½“å‰åæ ‡
+        
+        return force;
+    }
+    
+  //è®¡ç®—å¸å¼•åŠ›
+    private double attractForce(double distance) 
+    {
+        double force = attractConstant * distance;
+        return force;
+    }
+    
+  //æ£€æŸ¥æ˜¯å¦åˆ°è¾¾ç›®çš„åœ°
+    private boolean checkGoal() 
+    {
+
+        Point3d currentPos = new Point3d();
+        getCoords(currentPos); //å½“å‰åæ ‡
+        Point3d goalPos = new Point3d(goal3d.x, goal3d.y, goal3d.z);
+
+        if (currentPos.distance(goalPos) <= 0.5) // å¦‚æœå½“å‰è·ç¦»ç›®æ ‡ç‚¹å°äº0.5é‚£ä¹ˆå³è®¤ä¸ºæ˜¯åˆ°è¾¾
+        {
+            return true;
+        } else
+        {
+            return false;
+        }
     }
 
    public void performBehavior() {
-	   if (collisionDetected()) {
-           // stop the robot
-       	//ÉèÖÃÒÔÃ×/ÃëÎªµ¥Î»µÄÆ½ÒÆËÙ¶È
-           setTranslationalVelocity(0.0);
-           //ÒÔÃ¿Ãë»¡¶ÈÎªµ¥Î»ÉèÖÃĞı×ªËÙ¶È
-           setRotationalVelocity(0);
-       } else {
-           // progress at 0.5 m/s -> ÒÔ0.5Ã×/ÃëµÄËÙ¶ÈÇ°½ø
-           setTranslationalVelocity(0.5);
-           // frequently change orientation 
-           // getCounter->¾­¹ıµÄÄ£Äâ²½ÖèÊı,
-           if ((getCounter() % 100)==0) 
-           	//ÒÔÃ¿Ãë»¡¶ÈÎªµ¥Î»ÉèÖÃĞı×ªËÙ¶È
-              setRotationalVelocity(Math.PI/2 * (0.5 - Math.random()));
-       }
+	   
        //every 20 frames
        if (getCounter()%20==0){
-           // print each sonars measurement ´òÓ¡³öÃ¿Ò»¸öÉùÄÉµÄ²âÁ¿Öµ	
+           // print each sonars measurement ï¿½ï¿½Ó¡ï¿½ï¿½Ã¿Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ÉµÄ²ï¿½ï¿½ï¿½Öµ	
            for (int i=0;i< sonars.getNumSensors();i++) {
                double range = sonars.getMeasurement(i); 
                boolean hit = sonars.hasHit(i);
                double angle = bumpers.getSensorAngle(i);
                System.out.println("measured range ="+range+ " has hit something:"+hit); 
            }
+           
+           if (collisionDetected()) {
+               // stop the robot
+               setTranslationalVelocity(0.0);
+               setRotationalVelocity(0);
+           } else {
+               // progress at 0.5 m/s 
+               setTranslationalVelocity(0.5);
+               // frequently change orientation 
+               // getCounter
+               if ((getCounter() % 100)==0) 
+               	
+                  setRotationalVelocity(Math.PI/2 * (0.5 - Math.random()));
+           }
        }
    }
-	
-//    CameraSensor camera;
-////    BufferedImage cameraImage;
-//
-//    public Robot(Vector3d position, String name) {
-//        super(position, name);
-//        // add a camera on top of the robot
-//        camera = RobotFactory.addCameraSensor(this);
-//        // reserve space for image capture
-////        cameraImage = camera.createCompatibleImage();
-//   }
-//
-//     public void performBehavior() {
-////          .......  your code
-//
-//         // get camera image 
-//         camera.copyVisionImage(cameraImage);
-//         // process image 
-////         ... use BufferedImage api
-//     } 
+
 }
