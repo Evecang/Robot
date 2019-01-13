@@ -80,98 +80,56 @@ public class MyRobot extends Demo
                 return 0;
             }
         }
+        
+    	private double getToXAngle(Vector2d v)	//计算向量到x轴的角度
+    	{
+    		
+            switch(getQuadrant(v)){
+	            case 1:
+	            case 2:
+	            case -1:
+	            case -2:
+	            case -3:
+	            	return v.angle(new Vector2d(1,0));
+	            case 3:
+	            case 4:
+	            case -4:
+	            	return 2 * Math.PI - v.angle(new Vector2d(1,0));
+	           default:
+	        	   System.out.println("getAngle->getToXAngle输入的向量是原点");
+	        	   return v.angle(new Vector2d(1,0));
+            }
+            
+    	}
 
         private double getAngle(Vector2d v1, Vector2d v2) //计算两个向量之间的弧度角
         {
-
-            double k = v1.y / v1.x;
-            double y = k * v2.x;
-            switch (getQuadrant(v1))
-            {
-                case 1:
-                case 4:
-                case -1:
-                    if (v2.y > y) //v2肯定再第一或者
-                    {
-                        return v1.angle(v2); //两个向量之间的夹角弧度
-                    } else if (v2.y < y)
-                    {
-                        return 2 * Math.PI - v1.angle(v2);
-                    } else
-                    {
-                        if (v1.x * v2.x < 0)
-                        {
-                            return Math.PI;
-                        } else
-                        {
-                            if (debug)
-                                System.out.println("NO");
-                            return 0;
-                        }
-                    }
-                case 2:
-                case 3:
-                case -3:
-                    if (v2.y > y)
-                    {
-                        return 2 * Math.PI - v1.angle(v2);
-                    } else if (v2.y < y)
-                    {
-                        return v1.angle(v2);
-                    } else
-                    {
-                        if (v1.x * v2.x < 0)
-                        {
-                            return Math.PI;
-                        } else
-                        {
-                            if (debug)
-                                System.out.println("here");
-                            return 0;
-                        }
-                    }
-                case -2:
-                    int i = getQuadrant(v2);
-                    if (i == -4)
-                    {
-                        return Math.PI;
-                    } else if (i == -2 || i == -1 || i == 1 || i == 4)
-                    {
-                        return 2 * Math.PI - v1.angle(v2);
-                    } else
-                    {
-                        return v1.angle(v2);
-                    }
-                case -4:
-                    int j = getQuadrant(v2);
-                    if (j == -1)
-                    {
-                        return Math.PI;
-                    } else if (j == -4 || j == -1 || j == 1 || j == 4)
-                    {
-                        return v1.angle(v2);
-                    } else
-                    {
-                        return 2 * Math.PI - v1.angle(v2);
-                    }
-                default:
-                    return -1;
-            }
-
+        	double angle1 = getToXAngle(v1);
+        	double angle2 = getToXAngle(v2);
+        	if(angle1 > angle2){
+        		if(angle1 > (angle2 + Math.PI)){
+        			return angle2 - angle1 + 2 * Math.PI;
+        		}else{
+        			return -(angle1 - angle2);
+        		}
+        	}else if(angle1 < angle2){
+        		if(angle2 > (angle1 + Math.PI)){
+        			return -(2 * Math.PI - angle2 + angle1);
+        		}else{
+        			return angle2 - angle1;
+        		}
+        	}else{
+        		return 0.0;
+        	}
         }
 
         private double repelForce(double distance, double range) //计算斥力
         {
             double force = 0;
-            Point3d p = new Point3d();
-            getCoords(p); //获取当前坐标
-            Vector2d pos = new Vector2d(p.z, p.x); //计算当前向量
-            Vector2d toGoal = new Vector2d((goal.x - pos.x), (goal.y - pos.y)); //当前指向目标的向量
-            double disGoal = toGoal.length();
-            double n=0.5;
             if (distance <= range) //距离大于range则没有斥力
             {
-                force = (range-distance)*repelConstant;//计算斥力
+//                force = (range-distance)*repelConstant;//计算斥力
+            	force = repelConstant/distance;
             }
 
             return force;
@@ -202,8 +160,6 @@ public class MyRobot extends Demo
 
         public void performBehavior()
         {
-
-
             // 为了防止智能体剧烈晃动，每10帧计算一次受力
             if (getCounter() % 10 == 0)
             {
@@ -217,35 +173,61 @@ public class MyRobot extends Demo
                 Point3d p = new Point3d();
                 getCoords(p);
                 Vector2d pos = new Vector2d(p.z, p.x);
-
-                //得到前面三个声纳的测量值
-                double d0 = sonars.getMeasurement(0);// front声纳，正前方
-                double d1 = sonars.getMeasurement(1);// frontleft声纳，左前方
-                double d2 = sonars.getMeasurement(8);// frontright声纳，右前方
-
-                //使用三次测量计算三个排斥力
-                double rf0 = repelForce(d0,2.0); //三个方向的斥力
-                double rf1 = repelForce(d1, 2.0);
-                double rf2 = repelForce(d2, 2.0);
-                System.out.println("d0="+d0 + "    D1="+d1 +"    d2="+d2);
-                System.out.println("rf0="+rf0 + "    rf1="+rf1 +"    rf2="+rf2);
-
-                // 计算斥力的合力
-                //计算局部参考系中三个排斥力的组成
-                double k1 = Math.cos(2 * Math.PI / 9);	//40
-                double k2 = Math.sin(2 * Math.PI / 9);	//40
-                Vector2d vf0 = new Vector2d(0 - rf0, 0);
-                Vector2d vf1 = new Vector2d((0 - rf1 * k1), (0 - rf1 * k2));
-                Vector2d vf2 = new Vector2d((0-rf2 * k1), (0-rf2 * k2));
-                Vector2d composition = new Vector2d();
-                System.out.println("vf0.x:"+vf0.x+",vf1.x:"+vf1.x+",vf2.x:"+vf2.x);
-                System.out.println("vf1.y:"+vf0.y+",vf1.y:"+vf1.y+",vf2.y"+vf2.y);
-                composition.setX(vf0.x + vf1.x + vf2.x);
-                composition.setY(vf0.y + vf1.y + vf2.y);
-
+                
+                //计算斥力
+                int sonarNum = sonars.getNumSensors();	//声纳个数
+                double fd[] = new double[sonarNum];		//各个声纳检测到的距离
+                for(int i=0;i<sonarNum;i++){
+//                	vf[i] = repelForce(sonars.getMeasurement(i),2.0);
+                	fd[i] = sonars.getMeasurement(i);
+                }
+                //
+                double vfx = 0.0;
+                double vfy = 0.0;
+                double angleToX = getAngle(new Vector2d(1,0), direct);	//运动方向到x轴的角度
+                
+                for(int i=0;i<sonarNum;i++){
+                	if(fd[i] <= 2.0){
+	                	vfx += -repelForce(fd[i],2.0) * ( Math.cos(sonars.getSensorAngle(i) + angleToX) );
+	                	vfy += repelForce(fd[i],2.0) * ( Math.sin(sonars.getSensorAngle(i) + angleToX) );
+                	}
+                }
+                
+                Vector2d goalRepelForce = new Vector2d(vfx, vfy);
+                
                 if (debug)
-                    System.out.println("(" + composition.x + ","
-                            + composition.y);
+                    System.out.println("partRepelForce(" + goalRepelForce.x + ","
+                            + goalRepelForce.y);
+                
+
+//                //得到前面三个声纳的测量值
+//                double d0 = sonars.getMeasurement(0);// front声纳，正前方
+//                double d1 = sonars.getMeasurement(1);// frontleft声纳，左前方
+//                double d2 = sonars.getMeasurement(8);// frontright声纳，右前方
+//
+//                //使用三次测量计算三个排斥力
+//                double rf0 = repelForce(d0,2.0); //三个方向的斥力
+//                double rf1 = repelForce(d1, 2.0);
+//                double rf2 = repelForce(d2, 2.0);
+//                System.out.println("d0="+d0 + "    D1="+d1 +"    d2="+d2);
+//                System.out.println("rf0="+rf0 + "    rf1="+rf1 +"    rf2="+rf2);
+//
+//                // 计算斥力的合力
+//                //计算局部参考系中三个排斥力的组成
+//                double k1 = Math.cos(2 * Math.PI / 9);	//40
+//                double k2 = Math.sin(2 * Math.PI / 9);	//40
+//                Vector2d vf0 = new Vector2d(0 - rf0, 0);
+//                Vector2d vf1 = new Vector2d((0 - rf1 * k1), (0 - rf1 * k2));
+//                Vector2d vf2 = new Vector2d((0-rf2 * k1), (0-rf2 * k2));
+//                Vector2d composition = new Vector2d();
+//                System.out.println("vf0.x:"+vf0.x+",vf1.x:"+vf1.x+",vf2.x:"+vf2.x);
+//                System.out.println("vf1.y:"+vf0.y+",vf1.y:"+vf1.y+",vf2.y"+vf2.y);
+//                composition.setX(vf0.x + vf1.x + vf2.x);
+//                composition.setY(vf0.y + vf1.y + vf2.y);
+
+//                if (debug)
+//                    System.out.println("(" + composition.x + ","
+//                            + composition.y);
 
                 //将排斥力的组成转换为全局坐标
                 // Vector2d repelForceVector = transform(direct, composition);
@@ -261,16 +243,19 @@ public class MyRobot extends Demo
 
                 if (debug)
                     System.out.println("attract force from goal:" + goalForce);
-                Vector2d goalForceVector = new Vector2d(
+                
+                Vector2d goalAttractForce = new Vector2d(
                         (goalForce * toGoal.x / disGoal),
                         (goalForce * toGoal.y / disGoal));
-                Vector2d originForceVector = new Vector2d(origin.x, origin.z);
+                
+//                Vector2d originForceVector = new Vector2d(origin.x, origin.z);
 
                 //斥力与吸引力的合力
-                double x = composition.x + goalForceVector.x;
-                double y = composition.y + goalForceVector.y;
+                double x = goalRepelForce.x + goalAttractForce.x;
+                double y = goalRepelForce.y + goalAttractForce.y;
 
                 Vector2d allForces = new Vector2d(x, y);
+                
                 if (debug)
                 {
                     System.out.println("total force(" + allForces.x + ","
@@ -278,6 +263,9 @@ public class MyRobot extends Demo
                     System.out.println("force direct(" + direct.x + ","
                             + direct.y + ")");
                 }
+                
+                //TODO:如果合力为0的情况：
+                
 
                 //根据力决定机器人应该移动的方向，direct为运动速度的方向向量
                 double angle = getAngle(direct, allForces);
@@ -286,14 +274,16 @@ public class MyRobot extends Demo
                 if (debug)
                     System.out.println("angle:" + angle);
 
-                // 判断转动方向
-                if (angle < Math.PI)
-                {
-                    setRotationalVelocity(angle);
-                } else if (angle > Math.PI)
-                {
-                    setRotationalVelocity((angle - 2 * Math.PI));
-                }
+//                // 判断转动方向
+//                if (angle < Math.PI)
+//                {
+//                    setRotationalVelocity(angle);
+//                } else if (angle > Math.PI)
+//                {
+//                    setRotationalVelocity((angle - 2 * Math.PI));
+//                }
+                //让机器人调整运动方向
+                setRotationalVelocity(angle);
 
                 if (checkGoal())
                 {
