@@ -11,13 +11,14 @@ import simbad.gui.Simbad;
 
 public class MyRobot extends Demo
 {
-    // 全局目标坐标
-    Vector2d goal = new Vector2d(8,8);
+    // 全局目标坐标:3d的z = 2d的-y   3d的x = 2d的x
+    Vector2d goal = new Vector2d(8,-8);
     Vector3d goal3d = new Vector3d(8,0,8);
 
-    private static final double repelConstant = 200.0;// 斥力系数
-    private static final double attractConstant = 30.0;// 引力系数
-    private boolean debug = true;// 调试标记
+    //216（斥力）/13(引力) -》比例要比这个小 引力最好是500一下
+    private static final double repelConstant = 216.0;// 斥力系数
+    private static final double attractConstant = 400.0;// 引力系数
+    private boolean debug = true;// 调试标记	
 
     public class Robot extends Agent
     {
@@ -26,9 +27,12 @@ public class MyRobot extends Demo
         LampActuator lamp;
 
         private Vector3d origin = null;
+        
+        long startTime;   //获取开始时间
 
         public void initBehavior()
         {
+        	
         }
 
         public Robot(Vector3d position, String name)
@@ -123,13 +127,14 @@ public class MyRobot extends Demo
         	}
         }
 
-        private double repelForce(double distance, double range) //计算斥力
+        private double repelForce(double distance, double range, double toGoal) //计算斥力
         {
             double force = 0;
             if (distance <= range) //距离大于range则没有斥力
             {
-//                force = (range-distance)*repelConstant;//计算斥力
-            	force = repelConstant/distance;
+                //计算斥力
+//            	force = repelConstant/(distance*distance);
+            	force = 0.5 * repelConstant * Math.pow((1/distance - 1/range), 2) * Math.pow(toGoal,2);
             }
 
             return force;
@@ -137,7 +142,8 @@ public class MyRobot extends Demo
 
         private double attractForce(double distance) //计算吸引力
         {
-            double force = attractConstant * distance;
+//            double force = attractConstant * distance;
+        	double force = 0.5 * attractConstant * Math.pow(distance,2);
             return force;
         }
 
@@ -160,6 +166,9 @@ public class MyRobot extends Demo
 
         public void performBehavior()
         {
+        	if(getCounter() == 0){
+        		startTime = System.currentTimeMillis();   //获取开始时间
+        	}
             // 为了防止智能体剧烈晃动，每10帧计算一次受力
             if (getCounter() % 10 == 0)
             {
@@ -167,89 +176,56 @@ public class MyRobot extends Demo
                 Vector3d velocity = getVelocity(); //获取速度
 
 
-                Vector2d direct = new Vector2d(velocity.z, velocity.x); //前进的方向向量
+                Vector2d direct = new Vector2d(velocity.x, -velocity.z); //前进的方向向量
 
                 //获得机器人的位置
                 Point3d p = new Point3d();
                 getCoords(p);
-                Vector2d pos = new Vector2d(p.z, p.x);
+                Vector2d pos = new Vector2d(p.x, -p.z);
                 
                 //计算斥力
                 int sonarNum = sonars.getNumSensors();	//声纳个数
                 double fd[] = new double[sonarNum];		//各个声纳检测到的距离
                 for(int i=0;i<sonarNum;i++){
-//                	vf[i] = repelForce(sonars.getMeasurement(i),2.0);
                 	fd[i] = sonars.getMeasurement(i);
                 }
-                //
                 double vfx = 0.0;
                 double vfy = 0.0;
                 double angleToX = getAngle(new Vector2d(1,0), direct);	//运动方向到x轴的角度
                 
+
+                //当前位置到目标点的距离
+                Vector2d toGoal = new Vector2d((goal.x - pos.x),
+                        (goal.y - pos.y));
+                double disGoal = toGoal.length(); 
+                
+                if (debug)
+                    System.out.println("distance to goal:" + disGoal);
+
+                
+                
                 for(int i=0;i<sonarNum;i++){
-                	if(fd[i] <= 2.0){
-	                	vfx += -repelForce(fd[i],2.0) * ( Math.cos(sonars.getSensorAngle(i) + angleToX) );
-	                	vfy += repelForce(fd[i],2.0) * ( Math.sin(sonars.getSensorAngle(i) + angleToX) );
+                	if(fd[i] <= 2.0 ){
+	                	vfx += -repelForce(fd[i],2.0,disGoal) * ( Math.cos(sonars.getSensorAngle(i) + angleToX) );
+	                	vfy += -repelForce(fd[i],2.0,disGoal) * ( Math.sin(sonars.getSensorAngle(i) + angleToX) );
                 	}
                 }
                 
                 Vector2d goalRepelForce = new Vector2d(vfx, vfy);
                 
                 if (debug)
-                    System.out.println("partRepelForce(" + goalRepelForce.x + ","
-                            + goalRepelForce.y);
-                
-
-//                //得到前面三个声纳的测量值
-//                double d0 = sonars.getMeasurement(0);// front声纳，正前方
-//                double d1 = sonars.getMeasurement(1);// frontleft声纳，左前方
-//                double d2 = sonars.getMeasurement(8);// frontright声纳，右前方
-//
-//                //使用三次测量计算三个排斥力
-//                double rf0 = repelForce(d0,2.0); //三个方向的斥力
-//                double rf1 = repelForce(d1, 2.0);
-//                double rf2 = repelForce(d2, 2.0);
-//                System.out.println("d0="+d0 + "    D1="+d1 +"    d2="+d2);
-//                System.out.println("rf0="+rf0 + "    rf1="+rf1 +"    rf2="+rf2);
-//
-//                // 计算斥力的合力
-//                //计算局部参考系中三个排斥力的组成
-//                double k1 = Math.cos(2 * Math.PI / 9);	//40
-//                double k2 = Math.sin(2 * Math.PI / 9);	//40
-//                Vector2d vf0 = new Vector2d(0 - rf0, 0);
-//                Vector2d vf1 = new Vector2d((0 - rf1 * k1), (0 - rf1 * k2));
-//                Vector2d vf2 = new Vector2d((0-rf2 * k1), (0-rf2 * k2));
-//                Vector2d composition = new Vector2d();
-//                System.out.println("vf0.x:"+vf0.x+",vf1.x:"+vf1.x+",vf2.x:"+vf2.x);
-//                System.out.println("vf1.y:"+vf0.y+",vf1.y:"+vf1.y+",vf2.y"+vf2.y);
-//                composition.setX(vf0.x + vf1.x + vf2.x);
-//                composition.setY(vf0.y + vf1.y + vf2.y);
-
-//                if (debug)
-//                    System.out.println("(" + composition.x + ","
-//                            + composition.y);
-
-                //将排斥力的组成转换为全局坐标
-                // Vector2d repelForceVector = transform(direct, composition);
-
+                    System.out.println("全局2d斥力(" + goalRepelForce.x + ","
+                            + goalRepelForce.y + ")");
 
                 //计算目标的吸引力
-                Vector2d toGoal = new Vector2d((goal.x - pos.x),
-                        (goal.y - pos.y));
-                double disGoal = toGoal.length();
-                if (debug)
-                    System.out.println("distance to goal:" + disGoal);
                 double goalForce = attractForce(disGoal);
-
-                if (debug)
-                    System.out.println("attract force from goal:" + goalForce);
-                
                 Vector2d goalAttractForce = new Vector2d(
                         (goalForce * toGoal.x / disGoal),
                         (goalForce * toGoal.y / disGoal));
                 
-//                Vector2d originForceVector = new Vector2d(origin.x, origin.z);
-
+                if (debug)
+                    System.out.println("全局2d引力:" + goalAttractForce);
+                
                 //斥力与吸引力的合力
                 double x = goalRepelForce.x + goalAttractForce.x;
                 double y = goalRepelForce.y + goalAttractForce.y;
@@ -258,9 +234,9 @@ public class MyRobot extends Demo
                 
                 if (debug)
                 {
-                    System.out.println("total force(" + allForces.x + ","
+                    System.out.println("合力2d(" + allForces.x + ","
                             + allForces.y + ")");
-                    System.out.println("force direct(" + direct.x + ","
+                    System.out.println("运动方向(" + direct.x + ","
                             + direct.y + ")");
                 }
                 
@@ -270,18 +246,10 @@ public class MyRobot extends Demo
                 //根据力决定机器人应该移动的方向，direct为运动速度的方向向量
                 double angle = getAngle(direct, allForces);
 
-
                 if (debug)
-                    System.out.println("angle:" + angle);
+                    System.out.println("旋转方向:" + angle / Math.PI * 180);
 
-//                // 判断转动方向
-//                if (angle < Math.PI)
-//                {
-//                    setRotationalVelocity(angle);
-//                } else if (angle > Math.PI)
-//                {
-//                    setRotationalVelocity((angle - 2 * Math.PI));
-//                }
+
                 //让机器人调整运动方向
                 setRotationalVelocity(angle);
 
@@ -291,6 +259,9 @@ public class MyRobot extends Demo
                     setTranslationalVelocity(0);
                     setRotationalVelocity(0);
                     lamp.setOn(true);
+                    long endTime=System.currentTimeMillis(); //获取结束时间
+//                    debug = false;
+                    System.out.println("程序运行时间： "+(endTime-startTime)+"ms");
                     return;
                 } else
                 {
@@ -303,21 +274,26 @@ public class MyRobot extends Demo
                 {
                     lamp.setBlink(true);
 
-                    double left = sonars.getFrontLeftQuadrantMeasurement();
-                    double right = sonars.getFrontRightQuadrantMeasurement();
-                    double front = sonars.getFrontQuadrantMeasurement();
-
-                    if ((front < 0.7) || (left < 0.7) || (right < 0.7))
-                    {
-                        if (left < right)
-                        {
-                            setRotationalVelocity(-1 - (0.1 * Math.random()));// 随机向右转 -1.。。
-                        } else
-                        {
-                            setRotationalVelocity(1 - (0.1 * Math.random()));// 随机向左转	+0.。。
-                        }
-                        setTranslationalVelocity(0);
-                    }
+//                    double left = sonars.getFrontLeftQuadrantMeasurement();
+//                    double right = sonars.getFrontRightQuadrantMeasurement();
+//                    double front = sonars.getFrontQuadrantMeasurement();
+//
+//                    if ((front < 0.7) || (left < 0.7) || (right < 0.7))
+//                    {
+//                        if (left < right)
+//                        {
+//                            setRotationalVelocity(-1 - (0.1 * Math.random()));// 向右转
+//                        } else
+//                        {
+//                            setRotationalVelocity(1 - (0.1 * Math.random()));// 向左转
+//                        }
+//                        setTranslationalVelocity(0);
+//                    }
+                    
+//                    setTranslationalVelocity(0);
+                    setRotationalVelocity(angle);
+                    setTranslationalVelocity(0.5);
+                    
                 }
                 else lamp.setBlink(false);
             }
@@ -374,25 +350,42 @@ public class MyRobot extends Demo
         Wall w5 = new Wall(new Vector3d(6, 0, 0), 3, 1, this);
         add(w5);
 
+        Wall w6 = new Wall(new Vector3d(3, 0, -6), 4, 1, this);
+//        w6.rotate90(1);
+        add(w6);
+        
+//        Wall w7 = new Wall(new Vector3d(-9, 0, -7), 4, 1, this);
+////        w6.rotate90(1);
+//        add(w7);
 
-        Wall w9 = new Wall(new Vector3d(-7, 0, -7), 1, 1, this);
+        Wall w9 = new Wall(new Vector3d(-7, 0, -6), 2, 1, this);
         w9.rotate90(1);
         add(w9);
+        
         Wall w10 = new Wall(new Vector3d(5, 0, 7),1, 1, this);
         w10.rotate90(1);
         add(w10);
 
         Box b1 = new Box(new Vector3d(0,0,0), new Vector3f(3, 3, 3),this);
         add(b1);
-        Box b2 = new Box(new Vector3d(-4,0,-4), new Vector3f(2, 1, 3),this);
-        add(b2);
+//        Box b2 = new Box(new Vector3d(-4,0,-4), new Vector3f(2, 1, 3),this);
+//        add(b2);
+        
+        Arch a2=new Arch(new Vector3d(-5,0,-4),this);
+//        a1.rotate90(2);
+        add(a2);
 
         Arch a1=new Arch(new Vector3d(0,0,6),this);
         a1.rotate90(2);
         add(a1);
+        Arch a3=new Arch(new Vector3d(-5,0,6),this);
+        a3.rotate90(2);
+        add(a3);
 
         add(new MyRobot.Robot(new Vector3d(-8, 0, -8), "My Robot"));
-        add(new MyMovRobot(new Vector3d(5, 0, 3), "MyMovRObot"));
+        add(new MyMovRobot(new Vector3d(5, 0, 3), "MyMovRObot1"));
+        add(new MyMovRobot(new Vector3d(-6, 0, 0), "MyMovRObot2"));
+        add(new MyMovRobot(new Vector3d(0, 0, -4), "MyMovRObot3"));
 
     }
 
